@@ -1,1 +1,18 @@
 
+
+
+搭建的好的工作流(传入url然后获取文章内容，让ai返回数据他解析之后我要的数据) 我存入数据库
+1.先在查询数据库中的信息：wechat_official_account_info表查询bu_type字段等于1的得到biz字段，
+2. 得到biz字段（筛选过的）之后去匹配表wechat_official_account_articles的wx_id字段，这俩个表的wx_id相等的，
+就返回wechat_official_account_articles表的url。
+将上面得到的url存在一个列表当中，去调用dify的接口，让ai返回数据他解析之后我要的数据，存入数据库
+
+
+部署在linux系统上并且完成了任务
+
+这是利用DrissionPage驱动去爬取微信公众号，拿到里面的我要的信息，利用celery异步操作提高访问的速度
+
+
+
+
+
