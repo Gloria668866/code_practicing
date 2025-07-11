@@ -1,0 +1,47 @@
+
+
+
+
+
+Business的url：  "https://www.usnews.com/best-graduate-schools/api/search?format=json&program=top-business-schools&specialty=mba&_page={page}&"        page=1,2,3....
+
+Education:       "https://www.usnews.com/best-graduate-schools/api/search?format=json&program=top-education-schools&specialty=edu&_page={page}&"          page=1,2,3....
+
+Engineering       "https://www.usnews.com/best-graduate-schools/api/search?format=json&program=top-engineering-schools&specialty=eng&_page={page}&"              page=1,2,3....
+
+Fine-arts      "https://www.usnews.com/best-graduate-schools/api/search?format=json&program=top-fine-arts-schools&specialty=fine-arts&_sort=rank-asc&_page={page}&     page=1,2,3....
+
+Low            "https://www.usnews.com/best-graduate-schools/api/search?format=json&program=top-law-schools&specialty=law&null&_page={page}&"
+
+library这个学科之后 就只有同行评分字段，没有学费字段
+
+Library     "https://www.usnews.com/best-graduate-schools/api/search?format=json&program=top-library-information-science-programs&specialty=library-information-science&_sort=rank-asc&_page={page}"
+
+Medicine       "https://www.usnews.com/best-graduate-schools/api/search?format=json&program=top-medical-schools&specialty=research&_page={page}&"
+
+Nursing         "https://www.usnews.com/best-graduate-schools/api/search?format=json&program=top-nursing-schools&specialty=nur&_page={page}&"
+
+Public Affairs           "https://www.usnews.com/best-graduate-schools/api/search?format=json&program=top-public-affairs-schools&specialty=public-affairs&_sort=rank-asc&_page={page}"
+
+Health 健康学科下面还有很多：
+Audiology       "https://www.usnews.com/best-graduate-schools/api/search?format=json&program=top-audiology-schools&_sort=rank-asc&_page={page]"
+Clinical Psychology
+Health Care Management
+Nursing-Anesthesia
+Nursing-Midwifery
+Occupational Therapy
+Pharmacy
+Physical Therapy
+Physician Assistant
+Public Health
+Rehabilitation Counseling
+Social Work
+Speech-Language Pathology
+Veterinary Medicine
+
+Sciences科学学科下面也还有：
+Biological-sciences        "https://www.usnews.com/best-graduate-schools/api/search?format=json&program=top-biological-sciences-schools&_sort=rank-asc&_page={page}"
+
+Social Sciences 下面也还有：
+
+Criminology    "https://www.usnews.com/best-graduate-schools/api/search?format=json&program=top-criminology-schools&_sort=rank-asc&_page={page}"
