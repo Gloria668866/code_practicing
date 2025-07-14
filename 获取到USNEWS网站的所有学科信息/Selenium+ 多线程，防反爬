@@ -1,0 +1,216 @@
+import time
+import json
+import random
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
+from config1 import MySql, obj_id
+
+def get_all_major_id_and_url():
+    conn = MySql.get_conn()
+    cursor = conn.cursor()
+    sql = "SELECT id, major_url FROM school_major_ranking_usnews_america_pg"
+    cursor.execute(sql)
+    result = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return result
+
+class AsyncUSNewsScraper:
+    def __init__(self, url_template, school_major_id, year_time=2025, delay_range=(2, 5)):
+        self.url_template = url_template
+        self.school_major_id = school_major_id
+        self.year_time = year_time
+        self.delay_range = delay_range
+        self.seen = set()
+        self.lock = threading.Lock()
+
+    def get_chrome_driver(self):
+        options = Options()
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-blink-features=AutomationControlled')
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        options.add_argument('--disable-extensions')
+        options.add_argument('--disable-plugins')
+        options.add_argument('--disable-images')
+        options.add_argument('--disable-javascript')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--disable-web-security')
+        options.add_argument('--allow-running-insecure-content')
+        options.add_argument('--disable-features=VizDisplayCompositor')
+        driver = webdriver.Chrome(options=options)
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        return driver
+
+    def random_delay(self):
+        delay = random.uniform(*self.delay_range)
+        time.sleep(delay)
+
+    def get_total_pages(self, url):
+        try:
+            driver = self.get_chrome_driver()
+            driver.get(url)
+            self.random_delay()
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.TAG_NAME, "body"))
+            )
+            text = driver.page_source
+            driver.quit()
+            if text.strip().startswith("<html"):
+                soup = BeautifulSoup(text, "html.parser")
+                text = soup.get_text()
+            text = text.strip()
+            data = json.loads(text)
+            total_pages = data['data']['totalPages']
+            print(f"总页数: {total_pages}")
+            return total_pages
+        except Exception as e:
+            print(f"获取总页数失败: {e}")
+            return 1
+
+    def get_items_from_text(self, text):
+        try:
+            if text.strip().startswith("<html"):
+                soup = BeautifulSoup(text, "html.parser")
+                text = soup.get_text()
+            text = text.strip()
+            data = json.loads(text)
+            return data['data']['items']
+        except Exception as e:
+            print(f"解析数据失败: {e}")
+            return []
+
+    def scrape_page(self, page):
+        try:
+            url = self.url_template.format(page=page)
+            print(f"正在爬取第 {page} 页: {url}")
+            driver = self.get_chrome_driver()
+            driver.get(url)
+            self.random_delay()
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.TAG_NAME, "body"))
+            )
+            text = driver.page_source
+            driver.quit()
+            items = self.get_items_from_text(text)
+            page_data = []
+            for item in items:
+                school_ename = item.get('name', '')
+                school_cname = ''
+                country = "USA"
+                usnews_id = item.get('id', '')
+                score = item.get('score', '')
+                ranking = item.get('ranking', {}).get('display_rank', 65535)
+                ranking_text = item.get('ranking', {}).get('display_rank', '')
+                ranking_name = item.get('ranking', {}).get('display_name', '')
+                url_ = item.get('url', '')
+                school_id = ''
+                country_id = ''
+                school_major_cid = None
+                city = None
+                state = None
+                now_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                school_key = f"{school_ename}_{self.year_time}"
+                with self.lock:
+                    if school_key in self.seen:
+                        continue
+                    self.seen.add(school_key)
+                id_ = obj_id.get_obj_id()
+                page_data.append({
+                    'id': id_,
+                    'year_time': self.year_time,
+                    'ranking': ranking,
+                    'usnews_id': usnews_id,
+                    'school_id': school_id,
+                    'school_ename': school_ename,
+                    'school_cname': school_cname,
+                    'country': country,
+                    'score': score,
+                    'school_major_id': self.school_major_id,
+                    'update_date_time': now_time,
+                    'country_id': country_id,
+                    'school_major_cid': school_major_cid,
+                    'city': city,
+                    'state': state,
+                    'ranking_text': ranking_text,
+                    'ranking_name': ranking_name
+                })
+                print(f"第{page}页: {id_} {school_ename} 排名:{ranking}")
+            return page_data
+        except Exception as e:
+            print(f"爬取第 {page} 页失败: {e}")
+            return []
+
+    def save_to_database(self, data_list):
+        try:
+            conn = MySql.get_conn()
+            cursor = conn.cursor()
+            sql = """
+            INSERT INTO school_major_ranking_usnews_america_pg_item (
+                id, year_time, ranking, usnews_id, school_id, school_ename, school_cname, country, score,
+                school_major_id, update_date_time, country_id, school_major_cid, city, state, ranking_text, ranking_name
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            for data in data_list:
+                cursor.execute(sql, (
+                    data['id'], data['year_time'], data['ranking']['display'], data['usnews_id'], data['school_id'],
+                    data['school_ename'], data['school_cname'], data['country'], data['score'],
+                    data['school_major_id'], data['update_date_time'], data['country_id'], data['school_major_cid'],
+                    data['city'], data['state'], data['ranking_text'], data['ranking']['name']
+                ))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            print(f"成功保存 {len(data_list)} 条数据到数据库")
+        except Exception as e:
+            print(f"保存数据失败: {e}")
+
+    def run(self):
+        first_url = self.url_template.format(page=1)
+        total_pages = self.get_total_pages(first_url)
+        print(f"开始单线程爬取，总页数: {total_pages}")
+        all_data = []
+        for page in range(1, total_pages + 1):
+            page_data = self.scrape_page(page)
+            all_data.extend(page_data)
+            print(f"第 {page} 页爬取完成，获取 {len(page_data)} 条数据")
+        if all_data:
+            self.save_to_database(all_data)
+            print(f"爬取完成！总共获取 {len(all_data)} 条数据")
+        else:
+            print("未获取到任何数据")
+
+def run_one_major(school_major_id, url_template):
+    if not url_template or '{page}' not in url_template:
+        print(f"跳过无效url: {url_template}")
+        return
+    print(f"\n==== 开始采集专业ID: {school_major_id} ====")
+    scraper = AsyncUSNewsScraper(url_template, school_major_id, year_time=2025, delay_range=(2, 5))
+    scraper.run()
+
+def main():
+    all_majors = get_all_major_id_and_url()
+    # 你可以根据机器性能调整max_workers
+    max_workers = 4
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = []
+        for school_major_id, url_template in all_majors:
+            futures.append(executor.submit(run_one_major, school_major_id, url_template))
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                print(f"某个专业采集出错: {e}")
+
+if __name__ == '__main__':
+    main()
+
+
+
