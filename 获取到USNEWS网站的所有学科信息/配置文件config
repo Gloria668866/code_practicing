@@ -1,0 +1,60 @@
+
+import time
+import uuid
+import pymysql
+import bson
+
+class MySql:
+    @staticmethod
+    def get_conn(db='bestieu_test2'):
+        # 你可以根据实际情况修改数据库连接参数
+        return pymysql.connect(
+            host='10.9.8.120',
+            port=3306,
+            user='lgb_dbs',
+            password='lgb123456',
+            database='bestieu_test2',
+            charset='utf8mb4'
+        )
+
+    # @staticmethod
+    # def cli_200_insert(db, sql, val):
+    #     conn = MySql.get_conn(db)
+    #     cursor = conn.cursor()
+    #     try:
+    #         cursor.execute(sql, val)
+    #         conn.commit()
+    #         print(f"[插入成功] {sql} {val}")
+    #     except Exception as e:
+    #         print(f"[插入失败] {e}")
+    #         conn.rollback()
+    #     finally:
+    #         cursor.close()
+    #         conn.close()
+    #
+    # @staticmethod
+    # def cli_200_select(db, sql):
+    #     conn = MySql.get_conn(db)
+    #     cursor = conn.cursor()
+    #     try:
+    #         cursor.execute(sql)
+    #         result = cursor.fetchall()
+    #         print(f"[查询成功] {sql}")
+    #         return result
+    #     except Exception as e:
+    #         print(f"[查询失败] {e}")
+    #         return []
+    #     finally:
+    #         cursor.close()
+    #         conn.close()
+
+class obj_id:
+    @staticmethod
+    def get_obj_id():
+        obj_id = bson.objectid.ObjectId().__str__()
+        return obj_id
+
+class my_time:
+    @staticmethod
+    def time_time():
+        return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
